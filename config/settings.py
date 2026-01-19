@@ -170,3 +170,18 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
+
+# Caching setup in settings.py
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',  # Use Redis Cache Backend
+        'LOCATION': 'redis://127.0.0.1:6379/1',    # Redis server address
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
+
+# Cache Timeout (seconds)
+CACHE_TTL = 60 * 5  # 5 minutes cache
