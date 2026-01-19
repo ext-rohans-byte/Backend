@@ -1,42 +1,39 @@
 from celery import shared_task
-from django.db import transaction,models
-from django.db.utils import OperationalError
+from django.core.exceptions import ObjectDoesNotExist
 
 from .models import Notification
-from .gateways.mock import MockNotificationGateway
+from .email_templates import build_email
+from .gateways import EmailNotificationGateway
 
 
 @shared_task(bind=True, max_retries=3)
 def send_notification_task(self, notification_id):
     try:
-        # 🔒 Transaction REQUIRED for select_for_update
-        with transaction.atomic():
-            notification = (
-                Notification.objects
-                .select_for_update()
-                .get(id=notification_id)
-            )
+        notification = Notification.objects.get(id=notification_id)
 
-            # Idempotency guard
-            if notification.is_sent:
-                return
+        if notification.is_sent:
+            return  # idempotent
 
-            gateway = MockNotificationGateway()
-            gateway.send(
-                user=notification.user,
-                message=notification.message,
-            )
+        email_data = build_email(
+            event=notification.event,
+            payload=notification.payload,
+        )
 
-            notification.is_sent = True
-            notification.save(update_fields=["is_sent"])
+        gateway = EmailNotificationGateway()
+        gateway.send(
+            user=notification.user,
+            subject=email_data["subject"],
+            message=email_data["body"],
+        )
 
-    except OperationalError as exc:
-        # DB-level issues → retry
-        raise self.retry(exc=exc, countdown=5)
+        notification.is_sent = True
+        notification.save(update_fields=["is_sent"])
+
+    except ObjectDoesNotExist:
+        # Notification deleted → don't retry
+        return
 
     except Exception as exc:
-        # External service failure → increment retry_count
-        Notification.objects.filter(id=notification_id).update(
-            retry_count=models.F("retry_count") + 1
-        )
+        notification.retry_count += 1
+        notification.save(update_fields=["retry_count"])
         raise self.retry(exc=exc, countdown=5)

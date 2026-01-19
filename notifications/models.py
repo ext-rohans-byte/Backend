@@ -1,5 +1,5 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
 
 
 class Notification(models.Model):
@@ -13,13 +13,9 @@ class Notification(models.Model):
         on_delete=models.CASCADE,
         related_name="notifications",
     )
-
-    event = models.CharField(
-        max_length=50,
-        choices=EVENT_CHOICES,
-    )
-
+    event = models.CharField(max_length=50, choices=EVENT_CHOICES)
     message = models.TextField()
+    payload = models.JSONField(null=True, blank=True)
 
     is_sent = models.BooleanField(default=False)
     retry_count = models.PositiveIntegerField(default=0)
@@ -27,4 +23,4 @@ class Notification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user} - {self.event}"
+        return f"{self.event} → {self.user.email}"

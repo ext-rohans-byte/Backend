@@ -52,7 +52,20 @@ def create_order(*, user, order_data: CreateOrderData) -> Order:
         create_notification(
             user=order.user,
             event="order_created",
-            message=f"Your order #{order.id} has been created."
+            message="Order created successfully",
+            payload={
+                "order_id": order.id,
+                "total_amount": str(order.total_amount),
+                "address": order.address,
+                "items": [
+                    {
+                        "name": item.product.name,
+                        "qty": item.quantity,
+                        "price": str(item.price_at_purchase),
+                    }
+                    for item in order.items.all()
+                ],
+            },
         )
 
         return order

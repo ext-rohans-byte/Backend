@@ -4,6 +4,8 @@ from orders.models import Order
 from .models import Payment
 from .gateways.mock import MockPaymentGateway
 from notifications.services import create_notification
+from django.utils import timezone
+
 
 
 
@@ -31,9 +33,14 @@ def create_payment(*, order):
             order.status = Order.STATUS_PAID
 
             create_notification(
-                user=order.user,
+                user=payment.order.user,
                 event="payment_success",
-                message=f"Payment successful for Order #{order.id}"
+                message="Payment successful",
+                payload={
+                    "order_id": payment.order.id,
+                    "amount": str(payment.amount),
+                    "paid_at": timezone.now().isoformat(),
+                },
             )
 
         else:
