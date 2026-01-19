@@ -74,4 +74,19 @@ class OrderListAPIView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Order.objects.filter(user=self.request.user)
+        user = self.request.user
+
+        if user.is_staff or user.is_superuser:
+            return (
+                Order.objects
+                .select_related("user")
+                .prefetch_related("items__product")
+                .order_by("-created_at")
+            )
+
+        return (
+            Order.objects
+            .filter(user=user)
+            .prefetch_related("items__product")
+            .order_by("-created_at")
+        )
